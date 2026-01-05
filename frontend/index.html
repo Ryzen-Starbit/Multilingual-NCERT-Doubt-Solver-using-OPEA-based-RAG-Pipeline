@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multilingual NCERT Doubt Solver</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: #1f2937; 
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: #111827;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    h2 {
+      font-family: 'Poppins', sans-serif;
+      text-align: center;
+      margin-bottom: 25px;
+      font-size: 24px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-size: 12px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    select, textarea {
+      width: 100%;
+      margin-top: 5px;
+      padding: 12px 15px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      background: #1f2937;
+      color: #fff;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+    select:focus, textarea:focus {
+      outline: 2px solid #3b82f6; 
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: #ffffff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    #answer {
+      background: #111827;
+      border: 1px solid #374151;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 8px;
+      min-height: 50px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #9ca3af;
+      font-style: italic;
+    }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid #374151;
+      border-top: 3px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>📘 Multilingual NCERT Doubt Solver</h2>
+    <label>Class</label>
+    <select id="grade"></select>
+    <label>Subject</label>
+    <select id="subject"></select>
+    <label>Ask your question (any language)</label>
+    <textarea id="question" rows="4"></textarea>
+    <button type="button" onclick="ask()">Ask</button>
+    <div id="answer"></div>
+  </div>
+  <script>
+    const session_id = Math.random().toString(36).substring(2);
+    const subjectsByClass = {
+      "5": ["English","Hindi","Maths","Science","Urdu"],
+      "6": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+      "7": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+      "8": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+      "9": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+      "10": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+    };
+    const gradeSelect = document.getElementById("grade");
+    const subjectSelect = document.getElementById("subject");
+    Object.keys(subjectsByClass).forEach(g => {
+      const opt = document.createElement("option");
+      opt.value = g;
+      opt.textContent = g;
+      gradeSelect.appendChild(opt);
+    });
+    function updateSubjects() {
+      subjectSelect.innerHTML = "";
+      subjectsByClass[gradeSelect.value].forEach(sub => {
+        const opt = document.createElement("option");
+        opt.textContent = sub;
+        subjectSelect.appendChild(opt);
+      });
+    }
+    gradeSelect.addEventListener("change", updateSubjects);
+    updateSubjects(); 
+    async function ask() {
+      const btn = document.querySelector("button");
+      const answerDiv = document.getElementById("answer");
+      btn.disabled = true;
+      answerDiv.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          Thinking from NCERT...
+        </div>
+      `;
+      const question = document.getElementById("question").value;
+      const grade = gradeSelect.value;
+      const subject = subjectSelect.value.toLowerCase().trim();
+      try {
+        const res = await fetch("http://127.0.0.1:8000/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id, question, grade, subject })
+        });
+        const data = await res.json();
+        answerDiv.innerHTML = `
+        <b>Answer:</b><br>${data.answer}
+        <br><br><b>Source:</b><br>
+        ${(data.citation || []).join("<br>")}
+        <br><br><b>Latency:</b> ${data.latency}s
+       `;
+      } catch (err) {
+        answerDiv.innerHTML = "❌ Error contacting server.";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
