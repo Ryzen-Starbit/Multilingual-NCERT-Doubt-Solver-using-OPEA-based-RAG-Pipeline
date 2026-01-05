@@ -9,7 +9,7 @@
       margin: 0;
       padding: 0;
       font-family: 'Inter', sans-serif;
-      background: #1f2937; 
+      background: #1f2937;
       color: #ffffff;
       display: flex;
       justify-content: center;
@@ -18,7 +18,7 @@
     }
     .container {
       width: 100%;
-      max-width: 500px;
+      max-width: 520px;
       background: #111827;
       padding: 30px;
       border-radius: 12px;
@@ -51,7 +51,7 @@
       resize: vertical;
     }
     select:focus, textarea:focus {
-      outline: 2px solid #3b82f6; 
+      outline: 2px solid #3b82f6;
     }
     button {
       width: 100%;
@@ -69,12 +69,11 @@
       background: #2563eb;
     }
     #answer {
-      background: #111827;
+      background: #0b1220;
       border: 1px solid #374151;
       padding: 15px;
       margin-top: 20px;
       border-radius: 8px;
-      min-height: 50px;
       font-size: 14px;
       line-height: 1.5;
     }
@@ -96,6 +95,32 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+    .feedback {
+      display: none;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px dashed #374151;
+      text-align: center;
+    }
+    .thumb {
+      font-size: 26px;
+      cursor: pointer;
+      margin: 0 12px;
+      opacity: 0.4;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    .thumb:hover {
+      transform: scale(1.15);
+      opacity: 0.8;
+    }
+    .thumb.selected {
+      opacity: 1;
+    }
+    .feedback-msg {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
   </style>
 </head>
 <body>
@@ -107,69 +132,104 @@
     <select id="subject"></select>
     <label>Ask your question (any language)</label>
     <textarea id="question" rows="4"></textarea>
-    <button type="button" onclick="ask()">Ask</button>
+    <button onclick="ask()">Ask</button>
     <div id="answer"></div>
+    <div class="feedback" id="feedbackBox">
+      <div>
+        <span class="thumb" id="up">👍</span>
+        <span class="thumb" id="down">👎</span>
+      </div>
+      <div class="feedback-msg" id="feedbackMsg"></div>
+    </div>
   </div>
-  <script>
-    const session_id = Math.random().toString(36).substring(2);
-    const subjectsByClass = {
-      "5": ["English","Hindi","Maths","Science","Urdu"],
-      "6": ["English","Hindi","Maths","Science","Urdu","Social Science"],
-      "7": ["English","Hindi","Maths","Science","Urdu","Social Science"],
-      "8": ["English","Hindi","Maths","Science","Urdu","Social Science"],
-      "9": ["English","Hindi","Maths","Science","Urdu","Social Science"],
-      "10": ["English","Hindi","Maths","Science","Urdu","Social Science"],
-    };
-    const gradeSelect = document.getElementById("grade");
-    const subjectSelect = document.getElementById("subject");
-    Object.keys(subjectsByClass).forEach(g => {
+<script>
+  const session_id = Math.random().toString(36).substring(2);
+  let lastQuestion = "";
+  let feedbackGiven = false;
+  const subjectsByClass = {
+    "5": ["English","Hindi","Maths","Science","Urdu"],
+    "6": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+    "7": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+    "8": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+    "9": ["English","Hindi","Maths","Science","Urdu","Social Science"],
+    "10":["English","Hindi","Maths","Science","Urdu","Social Science"]
+  };
+  const gradeSelect = document.getElementById("grade");
+  const subjectSelect = document.getElementById("subject");
+  Object.keys(subjectsByClass).forEach(g => {
+    const opt = document.createElement("option");
+    opt.value = g;
+    opt.textContent = g;
+    gradeSelect.appendChild(opt);
+  });
+  function updateSubjects() {
+    subjectSelect.innerHTML = "";
+    subjectsByClass[gradeSelect.value].forEach(sub => {
       const opt = document.createElement("option");
-      opt.value = g;
-      opt.textContent = g;
-      gradeSelect.appendChild(opt);
+      opt.textContent = sub;
+      subjectSelect.appendChild(opt);
     });
-    function updateSubjects() {
-      subjectSelect.innerHTML = "";
-      subjectsByClass[gradeSelect.value].forEach(sub => {
-        const opt = document.createElement("option");
-        opt.textContent = sub;
-        subjectSelect.appendChild(opt);
+  }
+  gradeSelect.addEventListener("change", updateSubjects);
+  updateSubjects();
+  async function ask() {
+    const btn = document.querySelector("button");
+    const answerDiv = document.getElementById("answer");
+    btn.disabled = true;
+    feedbackGiven = false;
+    document.getElementById("feedbackBox").style.display = "none";
+    document.getElementById("feedbackMsg").innerText = "";
+    document.querySelectorAll(".thumb").forEach(t => t.classList.remove("selected"));
+    answerDiv.innerHTML = `
+      <div class="loading">
+        <div class="spinner"></div>
+        Thinking from NCERT...
+      </div>
+    `;
+    const question = document.getElementById("question").value;
+    lastQuestion = question;
+    const grade = gradeSelect.value;
+    const subject = subjectSelect.value.toLowerCase().trim();
+    try {
+      const res = await fetch("http://127.0.0.1:8000/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id, question, grade, subject })
       });
-    }
-    gradeSelect.addEventListener("change", updateSubjects);
-    updateSubjects(); 
-    async function ask() {
-      const btn = document.querySelector("button");
-      const answerDiv = document.getElementById("answer");
-      btn.disabled = true;
+      const data = await res.json();
       answerDiv.innerHTML = `
-        <div class="loading">
-          <div class="spinner"></div>
-          Thinking from NCERT...
-        </div>
-      `;
-      const question = document.getElementById("question").value;
-      const grade = gradeSelect.value;
-      const subject = subjectSelect.value.toLowerCase().trim();
-      try {
-        const res = await fetch("http://127.0.0.1:8000/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id, question, grade, subject })
-        });
-        const data = await res.json();
-        answerDiv.innerHTML = `
         <b>Answer:</b><br>${data.answer}
-        <br><br><b>Source:</b><br>
-        ${(data.citation || []).join("<br>")}
+        <br><br><b>Source:</b><br>${(data.citation || []).join("<br>")}
         <br><br><b>Latency:</b> ${data.latency}s
-       `;
-      } catch (err) {
-        answerDiv.innerHTML = "❌ Error contacting server.";
-      } finally {
-        btn.disabled = false;
-      }
+      `;
+      document.getElementById("feedbackBox").style.display = "block";
+    } catch {
+      answerDiv.innerHTML = "❌ Error contacting server.";
+    } finally {
+      btn.disabled = false;
     }
-  </script>
+  }
+  async function sendFeedback(isPositive) {
+    if (feedbackGiven) return;
+    feedbackGiven = true;
+    document.getElementById(isPositive ? "up" : "down").classList.add("selected");
+    try {
+      await fetch("http://127.0.0.1:8000/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: lastQuestion,
+          rating: isPositive ? 1 : 0,
+          comment: isPositive ? "Thumbs up" : "Thumbs down"
+        })
+      });
+      document.getElementById("feedbackMsg").innerText = "✅ Feedback saved";
+    } catch {
+      document.getElementById("feedbackMsg").innerText = "❌ Failed to save feedback";
+    }
+  }
+  document.getElementById("up").onclick = () => sendFeedback(true);
+  document.getElementById("down").onclick = () => sendFeedback(false);
+</script>
 </body>
 </html>
