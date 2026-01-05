@@ -40,7 +40,7 @@ db=FAISS.load_local("vectorstore/faiss_index",embeddings,allow_dangerous_deseria
 MODEL_NAME="Qwen/Qwen2.5-0.5B-Instruct"
 tokenizer=AutoTokenizer.from_pretrained(MODEL_NAME)
 tokenizer.pad_token=tokenizer.eos_token
-model=AutoModelForCausalLM.from_pretrained(MODEL_NAME,device_map="cpu",torch_dtype=torch.float32)
+model = AutoModelForCausalLM.from_pretrained(MODEL_NAME,device_map="cpu",dtype=torch.float32)
 model.eval()
 def not_found(start):
     return {"answer":"Not found in NCERT.","citation":None,"latency":round(time.time()-start,2)}
